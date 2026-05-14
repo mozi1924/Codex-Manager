@@ -1,17 +1,20 @@
 "use client";
 
-import { 
-  LayoutDashboard, 
-  Users, 
-  Key, 
+import {
+  LayoutDashboard,
+  Users,
+  UserCog,
+  Key,
   Boxes,
   Database,
   Puzzle,
-  FileText, 
-  Settings, 
+  FileText,
+  Route,
+  Settings,
   UserRound,
-  ChevronLeft, 
-  ChevronRight
+  ChevronLeft,
+  ChevronRight,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buildStaticRouteUrl } from "@/lib/utils/static-routes";
@@ -19,23 +22,36 @@ import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/store/useAppStore";
 import { useI18n } from "@/lib/i18n/provider";
 import {
+  getAllowedTopLevelRouteSections,
+  getTopLevelRouteLabel,
+  type TopLevelRoutePath,
+} from "@/lib/app-shell/top-level-routes";
+import { useAppSession } from "@/hooks/useAppSession";
+import {
   memo,
   useCallback,
   useMemo,
   type MouseEvent,
 } from "react";
 
-const NAV_ITEMS = [
-  { label: "仪表盘", href: "/", icon: LayoutDashboard },
-  { label: "账号管理", href: "/accounts", icon: Users },
-  { label: "聚合API", href: "/aggregate-api", icon: Database },
-  { label: "平台密钥", href: "/apikeys", icon: Key },
-  { label: "模型管理", href: "/models", icon: Boxes },
-  { label: "插件中心", href: "/plugins", icon: Puzzle },
-  { label: "请求日志", href: "/logs", icon: FileText },
-  { label: "设置", href: "/settings", icon: Settings },
-  { label: "赞助与推荐", href: "/author", icon: UserRound },
-];
+const NAV_ITEM_BY_PATH = new Map<TopLevelRoutePath, { icon: LucideIcon }>([
+  ["/", { icon: LayoutDashboard }],
+  ["/accounts", { icon: Users }],
+  ["/account-manager", { icon: UserCog }],
+  ["/aggregate-api", { icon: Database }],
+  ["/apikeys", { icon: Key }],
+  ["/models", { icon: Boxes }],
+  ["/model-groups", { icon: Route }],
+  ["/plugins", { icon: Puzzle }],
+  ["/logs", { icon: FileText }],
+  ["/settings", { icon: Settings }],
+  ["/author", { icon: UserRound }],
+]);
+
+type SidebarNavItem = {
+  href: TopLevelRoutePath;
+  icon: LucideIcon;
+};
 
 const NavItem = memo(({
   item,
@@ -44,7 +60,7 @@ const NavItem = memo(({
   onNavigate,
   itemName,
 }: {
-  item: typeof NAV_ITEMS[0],
+  item: SidebarNavItem,
   isActive: boolean,
   isSidebarOpen: boolean,
   onNavigate: (href: string, event: MouseEvent<HTMLAnchorElement>) => void,
@@ -54,6 +70,8 @@ const NavItem = memo(({
     href={buildStaticRouteUrl(item.href)}
     onClick={(event) => onNavigate(item.href, event)}
     aria-current={isActive ? "page" : undefined}
+    aria-label={itemName}
+    title={itemName}
     className={cn(
       "flex items-center gap-3 rounded-lg px-3 py-2 transition-all duration-200 hover:bg-accent hover:text-accent-foreground",
       isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
@@ -88,6 +106,8 @@ export function Sidebar() {
     currentShellPath,
     navigateShellPath,
   } = useAppStore();
+  const { data: session } = useAppSession();
+  const role = session?.role ?? "member";
 
   const handleNavigate = useCallback(
     (href: string, event: MouseEvent<HTMLAnchorElement>) => {
@@ -113,19 +133,42 @@ export function Sidebar() {
     [currentShellPath, navigateShellPath],
   );
 
-  const renderedItems = useMemo(() => 
-    NAV_ITEMS.map((item) => (
-      <NavItem 
-        key={item.href} 
-        item={item} 
-        itemName={t(item.label)}
-        isActive={item.href === currentShellPath} 
-        isSidebarOpen={isSidebarOpen}
-        onNavigate={handleNavigate}
-      />
-    )),
-    [currentShellPath, handleNavigate, isSidebarOpen, t]
-  );
+  const renderedItems = useMemo(() => {
+    const sections = getAllowedTopLevelRouteSections(role);
+    return sections.map((section, sectionIndex) => (
+      <div
+        key={section.id}
+        className={cn(
+          "space-y-1",
+          sectionIndex > 0 && "mt-3 border-t border-border/50 pt-3",
+        )}
+      >
+        {isSidebarOpen ? (
+          <div className="px-3 pb-1 text-[11px] font-semibold uppercase text-muted-foreground/70">
+            {t(section.label)}
+          </div>
+        ) : null}
+        <div className="grid gap-1">
+          {section.routes.map((route) => {
+            const item = NAV_ITEM_BY_PATH.get(route.path);
+            if (!item) return null;
+            const navItem = { href: route.path, icon: item.icon };
+            const itemName = t(getTopLevelRouteLabel(route.path, role));
+            return (
+              <NavItem
+                key={route.path}
+                item={navItem}
+                itemName={itemName}
+                isActive={route.path === currentShellPath}
+                isSidebarOpen={isSidebarOpen}
+                onNavigate={handleNavigate}
+              />
+            );
+          })}
+        </div>
+      </div>
+    ));
+  }, [currentShellPath, handleNavigate, isSidebarOpen, role, t]);
 
   return (
     <div
@@ -155,7 +198,7 @@ export function Sidebar() {
       </div>
 
       <div className="flex-1 overflow-y-auto py-4">
-        <nav className="grid gap-1 px-2">
+        <nav className="px-2">
           {renderedItems}
         </nav>
       </div>
