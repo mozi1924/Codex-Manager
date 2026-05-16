@@ -550,11 +550,9 @@ where
         }
     }
 
-    if !(path == "/v1/responses/compact" || path.starts_with("/v1/responses/compact?"))
-        && !should_treat_as_challenge_for_retry(status, upstream_content_type, upstream_cf_ray)
-    {
-        // 中文注释：compact 失败直接返回自身的结构化错误，不再进入通用 fallback。
-        // 主流程 fallback 只覆盖首跳响应，这里补齐“重试后仍 challenge/401/403/429”场景。
+    if !should_treat_as_challenge_for_retry(status, upstream_content_type, upstream_cf_ray) {
+        // 中文注释：主流程 fallback 只覆盖首跳响应，这里补齐“重试后仍 challenge/401/403/429”
+        // 场景；compact 与标准 responses 统一走同一分支，避免行为分叉。
         match handle_openai_fallback_branch(
             client,
             storage,
