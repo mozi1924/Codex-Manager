@@ -356,7 +356,7 @@ export function WebPasswordModal({ open, onOpenChange }: WebPasswordModalProps) 
           {(accountModeLocked || distributionLocked) && lockReasonLabels.length > 0 ? (
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
               <div className="font-medium">
-                {t("已进入账号计费模式。为避免权限绕过和账务断层，不能从界面关闭账号系统或额度分发。")}
+                {t("已进入账号计费模式。为避免权限归属错乱和账务断层，不能从界面关闭账号系统或额度分发。")}
               </div>
               <div className="mt-1 text-xs">
                 {t("锁定原因")}: {lockReasonLabels.join("、")}

@@ -237,6 +237,10 @@ fn assert_account_mode_locked_with_reason(reason: &str) {
         status["billingModeLock"]["accountModeLocked"], true,
         "account mode should be locked for {reason}: {status}"
     );
+    assert_eq!(
+        status["billingModeLock"]["distributionLocked"], true,
+        "distribution should be locked for {reason}: {status}"
+    );
     let reasons = status["billingModeLock"]["reasons"]
         .as_array()
         .expect("lock reasons");
