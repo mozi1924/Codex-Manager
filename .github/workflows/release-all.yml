@@ -21,6 +21,14 @@ on:
           - auto
           - true
           - false
+      build_scope:
+        description: "Build scope (all platforms or linux only)"
+        required: false
+        default: all
+        type: choice
+        options:
+          - all
+          - linux_only
 
 permissions:
   contents: write
@@ -73,6 +81,7 @@ jobs:
 
   build_windows:
     needs: build_frontend_dist
+    if: ${{ github.event.inputs.build_scope != 'linux_only' }}
     runs-on: windows-latest
 
     steps:
@@ -170,6 +179,7 @@ jobs:
 
   build_macos_beta:
     needs: build_frontend_dist
+    if: ${{ github.event.inputs.build_scope != 'linux_only' }}
     runs-on: macos-14
     strategy:
       fail-fast: false
@@ -467,7 +477,7 @@ jobs:
 
   release:
     needs: [build_windows, build_macos_beta, build_linux]
-    if: ${{ needs.build_windows.result == 'success' && needs.build_macos_beta.result == 'success' && needs.build_linux.result == 'success' }}
+    if: ${{ github.event.inputs.build_scope != 'linux_only' && needs.build_windows.result == 'success' && needs.build_macos_beta.result == 'success' && needs.build_linux.result == 'success' }}
     runs-on: ubuntu-22.04
 
     steps:
@@ -519,4 +529,3 @@ jobs:
           ref: ${{ github.event.inputs.ref || 'main' }}
           prerelease-input: ${{ github.event.inputs.prerelease || 'auto' }}
           assets-dir: release-assets
-
