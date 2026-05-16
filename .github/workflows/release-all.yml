@@ -529,3 +529,42 @@ jobs:
           ref: ${{ github.event.inputs.ref || 'main' }}
           prerelease-input: ${{ github.event.inputs.prerelease || 'auto' }}
           assets-dir: release-assets
+
+  release_linux_only:
+    needs: [build_linux]
+    if: ${{ github.event.inputs.build_scope == 'linux_only' && needs.build_linux.result == 'success' }}
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Download docker artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: codexmanager-docker
+          merge-multiple: true
+          path: release-assets
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Load docker images
+        shell: bash
+        run: |
+          set -euo pipefail
+          gunzip -c release-assets/codexmanager-docker-images.tar.gz | docker load
+
+      - name: Push docker images to GHCR
+        shell: bash
+        run: |
+          set -euo pipefail
+          owner="${{ github.repository_owner }}"
+          tag="${{ github.event.inputs.tag }}"
+
+          docker tag codexmanager-service:release "ghcr.io/${owner}/codexmanager-service:${tag}"
+          docker tag codexmanager-web:release "ghcr.io/${owner}/codexmanager-web:${tag}"
+
+          docker push "ghcr.io/${owner}/codexmanager-service:${tag}"
+          docker push "ghcr.io/${owner}/codexmanager-web:${tag}"
